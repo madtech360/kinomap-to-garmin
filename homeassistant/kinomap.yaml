@@ -1,0 +1,52 @@
+# ---------------------------------------------------------------------------
+# Home Assistant side of the Kinomap -> Garmin button.
+#
+# 1) secrets.yaml  (note the word "Bearer " and a space before your token):
+#      k2g_auth: "Bearer YOUR_TRIGGER_TOKEN"
+#
+# 2) configuration.yaml: add the rest_command below. If you already have a
+#    "rest_command:" key, add k2g_run inside it instead of repeating the key.
+#
+# 3) scripts.yaml (or Settings > Automations & Scenes > Scripts > Add > YAML):
+#    add the script below.
+#
+# Replace 192.168.1.50 with your Linux server's LAN IP.
+# Restart Home Assistant (or reload YAML configuration) after editing.
+# ---------------------------------------------------------------------------
+
+# ---- configuration.yaml ----
+rest_command:
+  k2g_run:
+    url: "http://192.168.1.50:8765/run"
+    method: post
+    headers:
+      authorization: !secret k2g_auth
+    timeout: 330   # a little longer than the server's RUN_TIMEOUT (300)
+
+# ---- scripts.yaml ----
+kinomap_to_garmin:
+  alias: Upload Kinomap activity to Garmin
+  icon: mdi:rowing
+  mode: single
+  sequence:
+    - action: rest_command.k2g_run
+      response_variable: result
+    # The server replies with a short result, e.g.
+    #   {"ok": true,  "message": "Uploaded Elliptical", "trace_id": "3fa91c2e"}
+    #   {"ok": false, "message": "1 upload(s) failed (trace 3fa91c2e)", "trace_id": "3fa91c2e"}
+    # Full detail stays in the container log and /data/logs/k2g.log, tagged with the trace id.
+    - action: persistent_notification.create
+      data:
+        title: >-
+          {{ 'Kinomap to Garmin' if result['content']['ok'] else 'Kinomap to Garmin failed' }}
+        message: >-
+          {{ result['content']['message'] }}
+        notification_id: kinomap_to_garmin
+
+# ---- Dashboard button card (Edit dashboard > Add card > Manual) ----
+# type: button
+# name: Upload to Garmin
+# icon: mdi:rowing
+# tap_action:
+#   action: perform-action
+#   perform_action: script.kinomap_to_garmin

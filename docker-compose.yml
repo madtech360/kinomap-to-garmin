@@ -1,0 +1,15 @@
+services:
+  k2g:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      # Published on localhost only by default. Set TRIGGER_BIND in .env to your LAN IP
+      # if Home Assistant runs on another machine. Never forward this port on your router.
+      - "${TRIGGER_BIND:-127.0.0.1}:8765:8765"
+    volumes:
+      # Garmin login tokens, "already uploaded" state and the log file
+      - k2g_data:/data
+
+volumes:
+  k2g_data:
